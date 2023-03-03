@@ -125,7 +125,7 @@ pub trait StakeContract: storage::StorageModule + views::ViewsModule {
 
         self.token_amount().update(|amount| *amount -= &reward);
         let reward_to_payment = reward * BigUint::from(ESTAR_DECIMALS);
-        self.send().direct_esdt(&caller, &TokenIdentifier::from("ESTAR-ccc274".as_bytes()), 0, &reward_to_payment);
+        self.send().direct_esdt(&caller, &TokenIdentifier::from("ESTAR-461bab".as_bytes()), 0, &reward_to_payment);
     }
 
     // Private functions
