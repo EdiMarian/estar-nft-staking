@@ -1,0 +1,17 @@
+{
+    "emittedTransaction": {
+        "nonce": 501,
+        "value": "0",
+        "receiver": "erd1qqqqqqqqqqqqqpgq3nnaee50skd7l2c3m7vr7wf8ruv7470mwmfs5d0tll",
+        "sender": "erd1szcgm7vq3tmyxfgd4wd2k2emh59az8jq5jjpj9799a0k59u0wmfss4vw3v",
+        "gasPrice": 1000000000,
+        "gasLimit": 60000000,
+        "data": "c2V0TmZ0UmFyaXR5QDA3MUJAMDY=",
+        "chainID": "1",
+        "version": 1,
+        "signature": "92c66ee8a8a3db9e30aabb5e2971ee952d8a5fc7df6597199d8a4e220a43120d724e18f506d15913387754ea422dc7c9356811bc3a23c2fa6bdce5f18faff50b"
+    },
+    "emittedTransactionData": "setNftRarity@071B@06",
+    "emittedTransactionHash": "c91e4de03f3ed52c18ea08f8cc1ca1d7e3b77bf2348217e06e74a25ea88c9c0d",
+    "contractAddress": "erd1qqqqqqqqqqqqqpgq3nnaee50skd7l2c3m7vr7wf8ruv7470mwmfs5d0tll"
+}
