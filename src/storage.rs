@@ -1,37 +1,48 @@
 multiversx_sc::imports!();
 
-use crate::model::Rarity;
-
 #[multiversx_sc::module]
 pub trait StorageModule {
 
-    #[view(getToken)]
-    #[storage_mapper("token")]
-    fn token(&self) -> NonFungibleTokenMapper<Self::Api>;
+    #[view(getCollection)]
+    #[storage_mapper("collection")]
+    fn collection(&self) -> NonFungibleTokenMapper<Self::Api>;
+
+    #[view(getRewardToken)]
+    #[storage_mapper("reward_token")]
+    fn reward_token(&self) -> SingleValueMapper<TokenIdentifier>;
+
+    #[view(getRewardTokenAmount)]
+    #[storage_mapper("reward_token_amount")]
+    fn reward_token_amount(&self) -> SingleValueMapper<BigUint>;
+
+    #[view(getRewardPerNft)]
+    #[storage_mapper("reward_per_nft")]
+    fn reward_per_nft(&self) -> SingleValueMapper<BigUint>;
 
     #[view(getPause)]
     #[storage_mapper("pause")]
     fn pause(&self) -> SingleValueMapper<bool>;
 
+    #[view(allowList)]
+    #[storage_mapper("allow_list")]
+    fn allow_list(&self) -> SetMapper<u64>;
+
     #[view(getUsersStaked)]
     #[storage_mapper("users_staked")]
     fn users_staked(&self) -> SetMapper<ManagedAddress>;
 
+    #[view(getNftsStaked)]
+    #[storage_mapper("nfts_staked")]
+    fn nfts_staked(&self, address: &ManagedAddress) -> SetMapper<u64>;
+
     #[storage_mapper("user_rewards")]
     fn user_rewards(&self, address: &ManagedAddress) -> SingleValueMapper<BigUint>;
 
-    #[storage_mapper("nfts_staked")]
-    fn nfts_staked(&self, address: &ManagedAddress) -> SetMapper<u64>;
+    #[view(getUserLastClaim)]
+    #[storage_mapper("user_last_claim")]
+    fn user_last_claim(&self, address: &ManagedAddress) -> SingleValueMapper<u64>;
 
     #[view(getNftStakedAt)]
     #[storage_mapper("nft_stakedAt")]
     fn nft_staked_at(&self, nonce: &u64) -> SingleValueMapper<u64>;
-
-    #[view(getNftRarity)]
-    #[storage_mapper("nft_rarity")]
-    fn nft_rarity(&self, nonce: &u64) -> SingleValueMapper<Rarity>;
-
-    #[view(getTokenAmount)]
-    #[storage_mapper("token_amount")]
-    fn token_amount(&self) -> SingleValueMapper<BigUint>;
 }

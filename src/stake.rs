@@ -1,23 +1,26 @@
 #![no_std]
 
-use model::Rarity;
-
 multiversx_sc::imports!();
 mod storage;
 mod views;
-pub mod model;
 
-pub const ONE_DAY_IN_SECONDS: u64 = 60;
-const ESTAR_DECIMALS: u64 = 1000000000000000000;
+pub const ONE_DAY_IN_SECONDS: u64 = 86400;
 
 #[multiversx_sc::contract]
 pub trait StakeContract: storage::StorageModule + views::ViewsModule {
 
     #[init]
-    fn init(&self, token: TokenIdentifier) {
-        if self.token().is_empty() {
-            self.token().set_token_id(token);
+    fn init(&self, collection_id: TokenIdentifier, token: TokenIdentifier) {
+        if self.collection().is_empty() {
+            self.collection().set_token_id(collection_id);
         }
+        self.reward_token().set(token);
+    }
+
+    #[only_owner]
+    #[endpoint(setRewardPerNft)]
+    fn set_reward_per_nft(&self, reward: BigUint) {
+        self.reward_per_nft().update(|amount| *amount = reward);
     }
 
     #[only_owner]
@@ -29,52 +32,58 @@ pub trait StakeContract: storage::StorageModule + views::ViewsModule {
     #[only_owner]
     #[payable("*")]
     #[endpoint(fundSystem)]
-    fn fund(&self) {
+    fn fund_system(&self) {
         let payment = self.call_value().single_esdt();
 
         require!(payment.amount > BigUint::zero(), "Amount must be greater than zero!");
 
-        self.token_amount().update(|amount| *amount += payment.amount);
+        self.reward_token_amount().update(|amount| *amount += payment.amount);
     }
 
     #[only_owner]
     #[payable("*")]
     #[endpoint(withdrawFunds)]
-    fn withdraw(&self, withdraw_amount: BigUint) {
+    fn withdraw_funds(&self, withdraw_amount: BigUint) {
         let caller = self.blockchain().get_caller();
         require!(withdraw_amount > BigUint::zero(), "Amount must be greater than zero!");
-        self.send().direct_esdt(&caller, &TokenIdentifier::from("ESTAR-461bab".as_bytes()), 0, &withdraw_amount);
-        self.token_amount().update(|amount| *amount -= &withdraw_amount);
+        self.send().direct_esdt(&caller, &self.reward_token().get(), 0, &withdraw_amount);
+        self.reward_token_amount().update(|amount| *amount -= &withdraw_amount);
     }
 
     #[only_owner]
-    #[endpoint(setNftRarity)]
-    fn set_nft_rarity(&self, nfts: MultiValueEncoded<MultiValue2<u64, u64>>) {
-        for nft in nfts.into_iter() {
-            let tuple = nft.into_tuple();
-            let rarity = match tuple.1 {
-                1 => Rarity::Common,
-                2 => Rarity::CommonGold,
-                3 => Rarity::Rare,
-                4 => Rarity::UltraRare,
-                5 => Rarity::Epic,
-                6 => Rarity::Legendary,
-                _ => Rarity::None,
-            };
-            require!(rarity != Rarity::None, "Invalid rarity!");
-            self.nft_rarity(&tuple.0).set(rarity);
+    #[endpoint(setAllowList)]
+    fn set_allow_list(&self, items: MultiValueEncoded<u64>) {
+        for item in items.into_iter() {
+            self.allow_list().insert(item);
+        }
+    }
+
+    #[only_owner]
+    #[endpoint(removeFromAllowList)]
+    fn remove_from_allow_list(&self, items: MultiValueEncoded<u64>) {
+        for item in items.into_iter() {
+            self.allow_list().remove(&item);
         }
     }
 
     #[payable("*")]
     #[endpoint(stake)]
-    fn stake(&self, #[payment_multi] payments: ManagedVec<EsdtTokenPayment<Self::Api>>) {
+    fn stake(&self, #[payment_multi] nfts: ManagedVec<EsdtTokenPayment<Self::Api>>) {
         require!(!self.pause().get(), "The stake is stopped!");
-        self.token().require_all_same_token(&payments);
+        self.collection().require_all_same_token(&nfts);
 
         let caller = self.blockchain().get_caller();
         let current_time = self.blockchain().get_block_timestamp();
-        for payment in payments.into_iter() {
+
+        if self.user_last_claim(&caller).is_empty() {
+            self.user_last_claim(&caller).set(current_time);
+        } else {
+            self.calculate_user_rewards_and_save(&caller, current_time);
+            self.user_last_claim(&caller).set(current_time);
+        }
+
+        for payment in nfts.into_iter() {
+            require!(self.allow_list().contains(&payment.token_nonce), "This NFT is not allowed to stake!");
             self.nfts_staked(&caller).insert(payment.token_nonce.clone());
             self.nft_staked_at(&payment.token_nonce).set(current_time);
         }
@@ -85,68 +94,57 @@ pub trait StakeContract: storage::StorageModule + views::ViewsModule {
     }
 
     #[endpoint(unStake)]
-    fn un_stake(&self, nfts_to_unstake: MultiValueEncoded<MultiValue2<TokenIdentifier, u64>>) {
+    fn un_stake(&self, nfts_to_unstake: MultiValueEncoded<u64>) {
         require!(!self.pause().get(), "The stake is stopped!");
 
-        let mut payments: ManagedVec<EsdtTokenPayment> = ManagedVec::new();
-        let token_id = self.token().get_token_id();
-
+        let collection_id = self.collection().get_token_id();
         let caller = self.blockchain().get_caller();
 
+        self.calculate_user_rewards_and_save(&caller, self.blockchain().get_block_timestamp());
+
         for nft in nfts_to_unstake.into_iter() {
-            let tuple = nft.into_tuple();
-            require!(self.nfts_staked(&caller).contains(&tuple.1), "One or more nfts do not belong to you!");
-            require!(token_id == tuple.0, "Invalid token!");
+            require!(self.nfts_staked(&caller).contains(&nft), "One or more nfts do not belong to you!");
+            self.nfts_staked(&caller).remove(&nft);
+            self.nft_staked_at(&nft).clear();
 
-            let payment = EsdtTokenPayment::new(tuple.0, tuple.1.clone(), BigUint::from(1u64));
-            payments.push(payment);
-
-            self.set_rewards_for_nft_to_user(&tuple.1);
-            self.nfts_staked(&caller).remove(&tuple.1);
-            self.nft_staked_at(&tuple.1).clear();
+            self.send().direct_esdt(&caller, &collection_id, nft, &BigUint::from(1u64));
         };
-        self.send().direct_multi(&caller, &payments);
 
         if self.nfts_staked(&caller).len() == 0usize {
             self.users_staked().remove(&caller);
+            self.user_last_claim(&caller).clear();
         }
     }
 
     #[endpoint(claimRewards)]
-    fn claim(&self) {
+    fn claim_rewards(&self) {
+        require!(!self.pause().get(), "The stake is stopped!");
+        
         let caller = self.blockchain().get_caller();
-        let reward = self.get_rewards(&caller);
+        let current_time = self.blockchain().get_block_timestamp();
+        self.calculate_user_rewards_and_save(&caller, current_time);
+        self.user_last_claim(&caller).set(current_time);
 
-        require!(reward > BigUint::zero(), "Amount of estar must be greater than zero!");
-        require!(reward <= self.token_amount().get(), "It is not enough estar in SC!");
+        let reward = self.user_rewards(&caller).get();
 
-        self.reset_nfts_staked_at_for_user(&caller);
+        require!(reward > BigUint::zero(), "Amount of ESTAR must be greater than zero!");
+        require!(reward <= self.reward_token_amount().get(), "It is not enough ESTAR in SC!");
+        
+        self.reward_token_amount().update(|amount| *amount -= &reward);
+        self.send().direct_esdt(&caller, &self.reward_token().get(), 0, &reward);
         self.user_rewards(&caller).clear();
-
-        self.token_amount().update(|amount| *amount -= &reward);
-        let reward_to_payment = reward * BigUint::from(ESTAR_DECIMALS);
-        self.send().direct_esdt(&caller, &TokenIdentifier::from("ESTAR-461bab".as_bytes()), 0, &reward_to_payment);
     }
 
     // Private functions
-    fn set_rewards_for_nft_to_user(&self, nft_nonce: &u64) {
-        let caller = self.blockchain().get_caller();
-        let current_time = self.blockchain().get_block_timestamp();
+    fn calculate_user_rewards_and_save(&self, caller: &ManagedAddress, current_time: u64) {
+        let last_claim = self.user_last_claim(caller).get();
+        let reward_per_nft = self.reward_per_nft().get();
+        let nfts_at_stake = self.nfts_staked(caller).len();
+        let time_at_stake = current_time - last_claim;
+        let reward = (reward_per_nft * BigUint::from(nfts_at_stake) * BigUint::from(time_at_stake)) / BigUint::from(ONE_DAY_IN_SECONDS);
 
-        let nft_staked_at = self.nft_staked_at(nft_nonce).get();
-        let nft_rarity = self.nft_rarity(nft_nonce).get();
-        let days_staked: u64 = (current_time - nft_staked_at) / ONE_DAY_IN_SECONDS;
-
-        if days_staked >= 1 {
-            let reward = self.get_reward_for_rarity(&nft_rarity);
-            self.user_rewards(&caller).update(|amount| *amount += reward * BigUint::from(days_staked))
-        };
-    }
-
-    fn reset_nfts_staked_at_for_user(&self, address: &ManagedAddress) {
-        let current_time = self.blockchain().get_block_timestamp();
-        for nft_nonce in self.nfts_staked(address).iter() {
-            self.nft_staked_at(&nft_nonce).set(current_time);
-        };
+        if reward > 0 {
+            self.user_rewards(caller).update(|amount| *amount += reward);
+        }
     }
 }

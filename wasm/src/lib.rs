@@ -5,9 +5,9 @@
 ////////////////////////////////////////////////////
 
 // Init:                                 1
-// Endpoints:                           16
+// Endpoints:                           20
 // Async Callback (empty):               1
-// Total number of exported functions:  18
+// Total number of exported functions:  22
 
 #![no_std]
 #![feature(alloc_error_handler, lang_items)]
@@ -18,22 +18,26 @@ multiversx_sc_wasm_adapter::panic_handler!();
 multiversx_sc_wasm_adapter::endpoints! {
     stake
     (
+        setRewardPerNft
         togglePause
         fundSystem
         withdrawFunds
-        setNftRarity
+        setAllowList
+        removeFromAllowList
         stake
         unStake
         claimRewards
-        getToken
+        getCollection
+        getRewardToken
+        getRewardTokenAmount
+        getRewardPerNft
         getPause
+        allowList
         getUsersStaked
-        getNftStakedAt
-        getNftRarity
-        getTokenAmount
         getNftsStaked
+        getUserLastClaim
+        getNftStakedAt
         getRewards
-        getRewardForRarity
     )
 }
 

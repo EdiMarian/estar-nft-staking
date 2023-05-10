@@ -1,17 +1,17 @@
 {
     "emittedTransaction": {
-        "nonce": 506,
+        "nonce": 786,
         "value": "0",
-        "receiver": "erd1qqqqqqqqqqqqqpgq3nnaee50skd7l2c3m7vr7wf8ruv7470mwmfs5d0tll",
+        "receiver": "erd1qqqqqqqqqqqqqpgqqcyldsqwrnp4w0nm20euap89h2fzgvjkwmfsq4ldyy",
         "sender": "erd1szcgm7vq3tmyxfgd4wd2k2emh59az8jq5jjpj9799a0k59u0wmfss4vw3v",
         "gasPrice": 1000000000,
         "gasLimit": 30000000,
-        "data": "Y2xhaW1SZXdhcmRz",
+        "data": "RVNEVFRyYW5zZmVyQDQ1NTM1NDQxNTIyRDM0MzYzMTYyNjE2MkAwNTZCQzc1RTJENjMxMDAwMDBANjY3NTZFNjQ1Mzc5NzM3NDY1NkQ=",
         "chainID": "1",
         "version": 1,
-        "signature": "3b8d2f28eff844dda7b1f20eaf0a09d3e24e93e05d973ae35c5aa830223e9a66338ea5a7bc3d4593d5ca030563a7b6dad01794467e5c26c474ff8415600f6d02"
+        "signature": "b7ae81994201ac17d4a6c24952df2178bc5cb8def0576ab1bbe4cf72ce9fb84ace458a7916c9e4e916796cb8f8b55d9ea412dcf1a72c7cfb14c65aab96864b07"
     },
-    "emittedTransactionData": "claimRewards",
-    "emittedTransactionHash": "702031be3d37b20c583689f7bde64405a7293004f58bda19feaebc8bc6ad51dc",
-    "contractAddress": "erd1qqqqqqqqqqqqqpgq3nnaee50skd7l2c3m7vr7wf8ruv7470mwmfs5d0tll"
+    "emittedTransactionData": "ESDTTransfer@45535441522D343631626162@056BC75E2D63100000@66756E6453797374656D",
+    "emittedTransactionHash": "525a9324e7e4c815dd40c33dea1a8e60eed175eda0962010fdd086f0edef0b11",
+    "contractAddress": "erd1qqqqqqqqqqqqqpgqqcyldsqwrnp4w0nm20euap89h2fzgvjkwmfsq4ldyy"
 }
